@@ -60,14 +60,35 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 ## Plan de développement (cocher au fur et à mesure)
 - [x] **Phase 0** — Créer le projet Xcode (assistant) + réglage « app agent ».
 - [x] **Phase 1** — Afficher l'icône « tasse vide » dans la barre de menus + menu « Quitter ».
-- [ ] **Phase 2** — Clic gauche = bascule vide ↔ pleine (sans logique de veille encore).
-- [ ] **Phase 3** — Brancher l'anti-veille (`beginActivity`/`endActivity`) sur la bascule.
-- [ ] **Phase 4** (optionnel) — Lancer au démarrage (`SMAppService`), minuterie, infobulle.
+- [x] **Phase 2** — Clic gauche = bascule vide ↔ pleine (sans logique de veille encore).
+- [x] **Phase 3** — Brancher l'anti-veille (`beginActivity`/`endActivity`) sur la bascule.
+- [x] **Phase 4** — Menu enrichi, minuterie (30 min/1 h/2 h) + notification de fin
+      (logo joint), icône d'app générée, lancement au démarrage (`SMAppService`),
+      installation dans /Applications.
 
 ## Statut actuel
-**Phase 1 validée** ✅ : tasse vide visible dans la barre de menus, clic → « Quitter ».
-App agent sans fenêtre (`LSUIElement = YES`), démarrée par `main.swift`.
-Prochaine étape : **Phase 2** — clic gauche = bascule vide ↔ pleine.
+**Toutes les phases faites** ✅ — app complète, installée dans /Applications :
+- clic gauche = bascule veille on/off ; clic droit = menu (Activer/Désactiver,
+  durées 30 min/1 h/2 h, Lancer au démarrage, Quitter) ;
+- anti-veille via `beginActivity(.idleDisplaySleepDisabled)` ;
+- minuterie (`Timer`) + extinction auto + notification de fin, avec le logo joint
+  via `UNNotificationAttachment` (`makeLogoFile()` rend la tasse à la volée) ;
+- icône d'app « tasse blanche sur carré brun » : PNG dans `AppIcon.appiconset`
+  (générés depuis `cup.and.saucer.fill` ; script de génération non versionné) ;
+- lancement au démarrage via `SMAppService.mainApp` ;
+- app agent, démarrée par `main.swift`, signée ad-hoc, zéro warning.
+
+Restes inutilisés `ViewController.swift` + `Base.lproj/Main.storyboard` (inoffensifs).
+
+### Mettre à jour l'app installée
+Recompiler en Release puis recopier dans /Applications :
+`xcodebuild -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -configuration Release build`
+puis copier le `.app` produit dans /Applications + `lsregister -f`. (Dév courant : Cmd-R dans Xcode.)
+
+### Connu / cosmétique
+L'icône À GAUCHE des notifications reste vide tant que le cache d'icônes du démon de
+notifs n'est pas rafraîchi (déconnexion/reconnexion). L'icône d'app est valide
+(Spotlight l'affiche) ; le logo À DROITE (image jointe) s'affiche, lui, toujours.
 NB : le projet est sandboxé (`ENABLE_APP_SANDBOX = YES`) — OK pour `beginActivity`
 (Phase 3) ; à surveiller pour le lancement au démarrage (Phase 4).
 
