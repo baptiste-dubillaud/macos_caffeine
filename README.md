@@ -31,20 +31,51 @@ That's it. Intentionally minimal.
 ### Requirements
 
 - **macOS** 10.15 or later
-- Xcode (to build the project)
+- Xcode (Command Line Tools or full IDE)
 
-### Build and run
+### Quick start (development)
+
+Open the project in Xcode and press **Cmd-R** to build and run immediately.
+
+### Build from source
 
 ```bash
-# Build in Debug mode (development)
 cd Caffeine
-xcodebuild -scheme Caffeine build
-
-# For daily use: copy to /Applications
-cp -r build/Debug/Caffeine.app /Applications/
+xcodebuild -scheme Caffeine -configuration Release build
 ```
 
-Or simply: open `Caffeine.xcodeproj` in Xcode and press **Cmd-R**.
+The app binary is generated at: `build/Release/Caffeine.app`
+
+### Deploy to `/Applications`
+
+```bash
+cp -r Caffeine/build/Release/Caffeine.app /Applications/
+# Refresh the system launcher database
+lsregister -f /Applications/Caffeine.app
+```
+
+Then launch from Spotlight (Cmd-Space, type "Caffeine") or add to startup items via System Settings > General > Login Items.
+
+### Update an existing installation
+
+Recompile and replace the app in `/Applications`:
+
+```bash
+cd Caffeine
+xcodebuild -project Caffeine.xcodeproj -scheme Caffeine -configuration Release build -derivedDataPath ../build
+rm -rf /Applications/Caffeine.app
+cp -r build/Build/Products/Release/Caffeine.app /Applications/
+lsregister -f /Applications/Caffeine.app
+```
+
+### Version management
+
+Version info is stored in Xcode:
+- Open `Caffeine.xcodeproj` → Target **Caffeine** → Build Settings
+- **Marketing Version**: user-facing version (e.g., `1.0`, `1.1`, `2.0`)
+- **Current Project Version**: build number (increment each build)
+
+The version is displayed in the app menu (right-click the coffee cup).
 
 ## Architecture
 

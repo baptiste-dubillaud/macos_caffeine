@@ -35,15 +35,37 @@ Rien de plus. Volontairement minimaliste.
 - Apple ID gratuit suffit. Apple Developer Program (99 €/an) NON requis (usage perso).
 
 ## Structure du projet
-- `Caffeine/Caffeine.xcodeproj` — le projet Xcode.
-- `Caffeine/Caffeine/main.swift` — **point d'entrée** : crée l'app, branche
-  `AppDelegate` comme délégué, `setActivationPolicy(.accessory)`, `app.run()`.
-  Le tout dans `MainActor.assumeIsolated { }` (sinon warning de concurrence Swift 6
-  sur `app.delegate = delegate` ; le projet est en isolation `MainActor` par défaut).
-- `Caffeine/Caffeine/AppDelegate.swift` — logique de l'app (la tasse, le menu).
-- `ViewController.swift` + `Base.lproj/Main.storyboard` — restes du modèle, **inutilisés**
-  (on pourra les supprimer ; ne pas remettre de référence au storyboard).
+- `Caffeine/Caffeine.xcodeproj` — le projet Xcode. **objectVersion 77** avec
+  **groupe synchronisé** (`fileSystemSynchronizedGroups`) : tout fichier déposé dans
+  `Caffeine/Caffeine/` est automatiquement compilé — **pas besoin de toucher au
+  `.pbxproj`** pour ajouter/supprimer un fichier.
+- `main.swift` — **point d'entrée** : crée l'app, branche `AppDelegate` comme délégué,
+  `setActivationPolicy(.accessory)`, `app.run()`. Le tout dans
+  `MainActor.assumeIsolated { }` (sinon warning de concurrence Swift 6 sur
+  `app.delegate = delegate` ; le projet est en isolation `MainActor` par défaut).
+- `AppDelegate.swift` — **cœur** : état (`isActive`, `sleepAssertion`, `autoOffTimer`,
+  `keepAliveWhenLocked`), cycle de vie, bascule `setActive/toggle`, icône, `deinit`.
+- `AppDelegate+SleepPrevention.swift` — anti-veille (`beginActivity`) + écoute du
+  verrouillage/extinction d'écran (`handleScreenLocked`).
+- `AppDelegate+Menu.swift` — construction du menu (clic droit) + ses actions.
+- `AppDelegate+Timer.swift` — minuterie d'extinction auto + notification de fin.
+- `LogoRenderer.swift` — `enum` sans état : dessine le logo de la notification.
+- `Strings.swift` — `enum L` : toutes les chaînes affichées, via `String(localized:)`.
+- `Localizable.xcstrings` — catalogue de traductions (voir « Localisation » plus bas).
+- (`ViewController.swift` + `Main.storyboard` : **supprimés**, n'existaient déjà plus.)
 - Réglages du target (« Application is agent », pas de storyboard) dans le projet.
+
+## Localisation (anglais + français, extensible)
+- **Langue source = anglais** (`developmentRegion = en`) ; le **français est fourni**.
+  macOS choisit **automatiquement** : français si le Mac est en français, anglais sinon.
+- Le code n'écrit **jamais** de texte en dur : il passe par `enum L` (dans
+  `Strings.swift`), qui appelle `String(localized: "…")`. La clé anglaise EST le texte
+  source ; la traduction française vit dans `Localizable.xcstrings`.
+- **Ajouter une langue** (ex. espagnol) : ouvrir `Localizable.xcstrings` dans Xcode,
+  bouton « + » → choisir la langue, remplir les cases. Ajouter aussi la région dans
+  `knownRegions` du `.pbxproj` (déjà fait pour `fr`). Aucun code à modifier.
+- Réglages activés : `LOCALIZATION_PREFERS_STRING_CATALOGS`, `SWIFT_EMIT_LOC_STRINGS`,
+  `STRING_CATALOG_GENERATE_SYMBOLS` = YES.
 
 ### ⚠️ Piège connu (déjà rencontré)
 Le modèle « Storyboard » fait démarrer `AppDelegate` *via le storyboard*. Comme on a
@@ -51,6 +73,19 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 → l'app tournait mais `applicationDidFinishLaunching` ne s'exécutait jamais (aucune tasse).
 **Solution :** point d'entrée explicite dans `main.swift` (et donc PAS de `@main` sur
 `AppDelegate`). Ne pas dépendre du storyboard pour démarrer le délégué.
+
+## Tests
+- **Cible `CaffeineTests`** (Swift Testing, `import Testing` / `#expect`), hébergée par
+  l'app (`TEST_HOST`), groupe synchronisé → déposer un `.swift` dans `Caffeine/CaffeineTests/`
+  suffit. Les tests accèdent au code interne via `@testable import Caffeine` et sont
+  `@MainActor` (le code de l'app est isolé sur le fil principal).
+- **Philosophie** : on ne teste que la **logique pure**, volontairement isolée dans
+  `CaffeineLogic.swift` (décision de coupure au verrouillage, durées, minutes→secondes).
+  L'UI, l'anti-veille et les notifications (effets de bord) ne sont pas testés.
+- Fichiers : `CaffeineTests.swift` (logique + titres de durée) et
+  `LogoRendererTests.swift` (le logo est un vrai PNG 256×256).
+- **Lancer** : dans Xcode **Cmd-U** (ou ▶ dans la marge d'un test). En ligne de commande :
+  `xcodebuild test -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -destination 'platform=macOS'`.
 
 ## Build & lancement
 - Dans Xcode : bouton ▶ (Run) ou **Cmd-R** pour compiler + lancer.
@@ -69,16 +104,22 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 ## Statut actuel
 **Toutes les phases faites** ✅ — app complète, installée dans /Applications :
 - clic gauche = bascule veille on/off ; clic droit = menu (Activer/Désactiver,
-  durées 30 min/1 h/2 h, Lancer au démarrage, Quitter) ;
+  durées 30 min/1 h/2 h, Lancer au démarrage, Rester actif écran verrouillé, Quitter) ;
+- **coupure au verrouillage/extinction d'écran** : par défaut, Caffeine se désactive
+  quand l'écran se verrouille (`com.apple.screenIsLocked`) ou s'éteint
+  (`NSWorkspace.screensDidSleepNotification`) — l'usage voulu (veille auto courte
+  empêchée seulement pendant le travail/les réunions). Option **« Rester actif écran
+  verrouillé »** (case à cocher, mémorisée dans `UserDefaults` sous la clé
+  `keepAliveWhenLocked`) pour l'inverse (garder actif en arrière-plan) ;
 - anti-veille via `beginActivity(.idleDisplaySleepDisabled)` ;
 - minuterie (`Timer`) + extinction auto + notification de fin, avec le logo joint
-  via `UNNotificationAttachment` (`makeLogoFile()` rend la tasse à la volée) ;
+  via `UNNotificationAttachment` (`LogoRenderer.makeFile()` rend la tasse à la volée) ;
 - icône d'app « tasse blanche sur carré brun » : PNG dans `AppIcon.appiconset`
   (générés depuis `cup.and.saucer.fill` ; script de génération non versionné) ;
 - lancement au démarrage via `SMAppService.mainApp` ;
-- app agent, démarrée par `main.swift`, signée ad-hoc, zéro warning.
-
-Restes inutilisés `ViewController.swift` + `Base.lproj/Main.storyboard` (inoffensifs).
+- app agent, démarrée par `main.swift`, signée ad-hoc, zéro warning ;
+- **bilingue anglais/français** (auto selon la langue du Mac), extensible ;
+- code **découpé** en fichiers courts (cœur + extensions `AppDelegate+*`).
 
 ### Mettre à jour l'app installée
 Recompiler en Release puis recopier dans /Applications :
