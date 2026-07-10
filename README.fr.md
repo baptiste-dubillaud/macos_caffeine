@@ -20,18 +20,21 @@ C'est tout. Volontairement minimaliste.
 - **Clic droit** — menu complet :
   - Activer / Désactiver immédiatement
   - Minuterie : 30 min, 1 h, ou 2 h d'anti-veille puis retour automatique
-  - Notification de fin de minuterie
+  - **Rester actif écran verrouillé** (case à cocher)
   - Lancer au démarrage du Mac
   - Quitter
-- **Lancement au démarrage** — option pour que Caffeine démarre automatiquement avec votre Mac
-- **Notifications** — alerte sonore + visuelle quand la minuterie expire
+- **Indicateur de minuterie dans la barre de menus** — quand une minuterie tourne, la tasse se remplit de « café » dont le niveau baisse au fil du temps (l'icône reste la simple tasse, alignée comme les autres, aucun chiffre qui défile). C'est une image *template* : macOS la recolore selon la barre (clair/sombre) et l'inverse au clic, comme ses propres icônes ; le temps exact est dans l'infobulle au survol
+- **Extinction auto au verrouillage** — par défaut, Caffeine se coupe quand l'écran se verrouille ou s'éteint, pour que votre veille automatique habituelle reprenne. Cochez **Rester actif écran verrouillé** pour au contraire continuer en arrière-plan (téléchargements, compilations…). Le choix est mémorisé.
+- **Notification de fin de minuterie** — alerte sonore + visuelle, avec le logo Caffeine joint
+- **Lancement au démarrage** — option pour démarrer automatiquement avec votre Mac
+- **Bilingue** — anglais et français, choisi automatiquement selon la langue de votre Mac (extensible à d'autres)
 
 ## Installation
 
 ### Prérequis
 
-- **macOS** 10.15 ou récent
-- Xcode (Command Line Tools ou IDE complet)
+- **macOS** 13 (Ventura) ou récent (utilise `SMAppService` pour le lancement au démarrage)
+- **Xcode** 16 ou récent (Swift Testing + catalogues de chaînes)
 
 ### Démarrage rapide (développement)
 
@@ -79,22 +82,44 @@ La version s'affiche dans le menu de l'app (clic droit sur la tasse).
 
 ## Architecture
 
-- **Langage** : Swift 6
+- **Langage** : Swift (le module de l'app est isolé sur le `MainActor` par défaut)
 - **Framework** : AppKit (`NSStatusItem`)
 - **Point d'entrée** : `main.swift` — crée l'app et démarre l'`AppDelegate`
-- **Logique** : `AppDelegate.swift` — gère la tasse, le menu et l'anti-veille
+- **Cœur + extensions** : `AppDelegate.swift` porte l'état et le cycle de vie ; le reste est réparti en extensions ciblées (`AppDelegate+Menu`, `AppDelegate+Timer`, `AppDelegate+SleepPrevention`)
+- **Logique pure** : `CaffeineLogic.swift` — décisions sans interface, testées unitairement (coupure au verrouillage, durées, texte du compte à rebours)
 - **Anti-veille** : `ProcessInfo.beginActivity()` avec `.idleDisplaySleepDisabled`
+- **Localisation** : catalogue de chaînes `Localizable.xcstrings` (anglais source + français) ; tout le texte passe par `Strings.swift` (`enum L`)
+- **Lancement au démarrage** : `SMAppService.mainApp`
 
 ### Structure du projet
 
 ```
 Caffeine/
-├── Caffeine.xcodeproj/    # Projet Xcode
+├── Caffeine.xcodeproj/                    # Projet Xcode (groupes synchronisés)
 ├── Caffeine/
-│   ├── main.swift         # Point d'entrée
-│   ├── AppDelegate.swift  # Logique principale
-│   └── Assets/
+│   ├── main.swift                         # Point d'entrée
+│   ├── AppDelegate.swift                  # Cœur : état, cycle de vie, bascule, icône
+│   ├── AppDelegate+Menu.swift             # Menu (clic droit) + actions
+│   ├── AppDelegate+Timer.swift            # Compte à rebours + notification
+│   ├── AppDelegate+SleepPrevention.swift  # Anti-veille + verrouillage/extinction
+│   ├── CaffeineLogic.swift                # Logique pure, testable
+│   ├── StatusIcon.swift                   # Icône de la barre (tasse + niveau de café qui baisse)
+│   ├── LogoRenderer.swift                 # Dessin du logo de notification
+│   ├── Strings.swift                      # Chaînes de l'UI (enum L)
+│   ├── Localizable.xcstrings              # Traductions (anglais + français)
+│   └── Assets.xcassets/                   # Icône de l'app
+├── CaffeineTests/                         # Tests unitaires (Swift Testing)
 └── README.fr.md
+```
+
+## Tests
+
+Les tests unitaires sont dans `CaffeineTests/` et utilisent **Swift Testing** (`import Testing`, `#expect`). Ils visent volontairement la logique *pure* isolée dans `CaffeineLogic` — décision de coupure au verrouillage, durées, minutes→secondes, format du compte à rebours — plus une vérification que le logo de notification est un vrai PNG de 256×256. L'UI, l'anti-veille et les notifications (effets de bord) ne sont pas testés unitairement.
+
+Les lancer dans Xcode avec **Cmd-U**, ou en ligne de commande :
+
+```bash
+xcodebuild test -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -destination 'platform=macOS'
 ```
 
 ## Développement
@@ -108,6 +133,10 @@ Caffeine/
 - ✅ Notifications de fin
 - ✅ Lancement au démarrage
 - ✅ Icône d'app
+- ✅ Indicateur de minuterie dans la barre de menus (niveau de café qui baisse)
+- ✅ Extinction auto au verrouillage (+ option « rester actif »)
+- ✅ Localisation anglais/français
+- ✅ Découpage du code en fichiers + tests unitaires
 
 ### Lancer en développement
 
@@ -122,6 +151,7 @@ Puis cliquer sur le bouton ▶ (Run) ou appuyer sur **Cmd-R**.
 
 - **App « agent »** : Caffeine n'apparaît que dans la barre de menus, pas dans le Dock
 - **Icônes système** : utilise `cup.and.saucer` (vide) et `cup.and.saucer.fill` (pleine) de SF Symbols
+- **Localisation** : catalogue de chaînes — ajouter une langue dans Xcode sans toucher au code
 - **Sandbox** : l'app est sandboxée pour respecter les normes macOS
 - **Signature** : signature ad-hoc (pas de compte Apple Developer requis pour usage personnel)
 
@@ -132,7 +162,7 @@ Déjà complet pour un usage quotidien. Les évolutions possibles seraient :
 - Synchronisation avec préférences système (Do Not Disturb)
 - Customisation des durées de minuterie
 - Historique d'usage
-- Dark mode adapté
+- Plus de langues
 
 ## Licence
 

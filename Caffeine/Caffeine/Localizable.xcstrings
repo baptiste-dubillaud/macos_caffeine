@@ -101,6 +101,16 @@
         }
       }
     },
+    "Time remaining: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temps restant : %@"
+          }
+        }
+      }
+    },
     "Timer finished — sleep is allowed again." : {
       "localizations" : {
         "fr" : {

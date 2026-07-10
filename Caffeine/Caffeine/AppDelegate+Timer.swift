@@ -15,18 +15,35 @@ extension AppDelegate {
         let minutes = sender.tag
         setActive(true)
 
-        // (Re)lance la minuterie : à la fin, autoOff() coupera tout.
-        autoOffTimer?.invalidate()
-        autoOffTimer = Timer.scheduledTimer(timeInterval: CaffeineLogic.timerInterval(minutes: minutes),
-                                            target: self,
-                                            selector: #selector(autoOff),
-                                            userInfo: nil,
-                                            repeats: false)
+        // Durée totale + date de fin (= maintenant + durée).
+        let duree = CaffeineLogic.timerInterval(minutes: minutes)
+        autoOffDuration = duree
+        autoOffEndDate = Date().addingTimeInterval(duree)
+
+        // Minuterie répétitive : chaque seconde, tick() rafraîchit le décompte et
+        // coupe l'app quand le temps est écoulé.
+        countdownTimer?.invalidate()
+        countdownTimer = Timer.scheduledTimer(timeInterval: 1,
+                                              target: self,
+                                              selector: #selector(tick),
+                                              userInfo: nil,
+                                              repeats: true)
+        updateIcon()   // affiche « 30:00 » tout de suite, sans attendre la 1ʳᵉ seconde
     }
 
-    // Appelée par la minuterie quand le temps est écoulé.
+    // Appelée chaque seconde par countdownTimer.
+    @objc func tick() {
+        guard let end = autoOffEndDate else { return }
+        if end.timeIntervalSinceNow <= 0 {
+            autoOff()          // temps écoulé → on coupe
+        } else {
+            updateIcon()       // sinon, on rafraîchit le décompte affiché
+        }
+    }
+
+    // Fin de la minuterie : on coupe et on prévient l'utilisateur.
     @objc func autoOff() {
-        setActive(false)
+        setActive(false)       // coupe l'anti-veille, arrête la minuterie, efface le décompte
         notifyTimerEnded()
     }
 

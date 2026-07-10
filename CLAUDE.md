@@ -43,12 +43,18 @@ Rien de plus. Volontairement minimaliste.
   `setActivationPolicy(.accessory)`, `app.run()`. Le tout dans
   `MainActor.assumeIsolated { }` (sinon warning de concurrence Swift 6 sur
   `app.delegate = delegate` ; le projet est en isolation `MainActor` par défaut).
-- `AppDelegate.swift` — **cœur** : état (`isActive`, `sleepAssertion`, `autoOffTimer`,
-  `keepAliveWhenLocked`), cycle de vie, bascule `setActive/toggle`, icône, `deinit`.
+- `AppDelegate.swift` — **cœur** : état (`isActive`, `sleepAssertion`, `countdownTimer`,
+  `autoOffEndDate`, `autoOffDuration`, `keepAliveWhenLocked`), cycle de vie, bascule
+  `setActive/toggle`, mise à jour de l'icône (`updateIcon`), `deinit`.
 - `AppDelegate+SleepPrevention.swift` — anti-veille (`beginActivity`) + écoute du
   verrouillage/extinction d'écran (`handleScreenLocked`).
 - `AppDelegate+Menu.swift` — construction du menu (clic droit) + ses actions.
-- `AppDelegate+Timer.swift` — minuterie d'extinction auto + notification de fin.
+- `AppDelegate+Timer.swift` — minuterie (compte à rebours) + notification de fin.
+- `CaffeineLogic.swift` — `enum` de logique pure (testée) : décision de coupure au
+  verrouillage, durées, minutes→secondes, texte du décompte, fraction du remplissage (café).
+- `StatusIcon.swift` — dessine l'icône de la barre, toujours en image **« template »** :
+  tasse seule sans minuterie, ou tasse remplie de « café » (niveau qui baisse) pendant
+  une minuterie. macOS gère la couleur clair/sombre et l'inversion au clic.
 - `LogoRenderer.swift` — `enum` sans état : dessine le logo de la notification.
 - `Strings.swift` — `enum L` : toutes les chaînes affichées, via `String(localized:)`.
 - `Localizable.xcstrings` — catalogue de traductions (voir « Localisation » plus bas).
@@ -112,8 +118,15 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
   verrouillé »** (case à cocher, mémorisée dans `UserDefaults` sous la clé
   `keepAliveWhenLocked`) pour l'inverse (garder actif en arrière-plan) ;
 - anti-veille via `beginActivity(.idleDisplaySleepDisabled)` ;
-- minuterie (`Timer`) + extinction auto + notification de fin, avec le logo joint
+- minuterie + extinction auto + notification de fin, avec le logo joint
   via `UNNotificationAttachment` (`LogoRenderer.makeFile()` rend la tasse à la volée) ;
+- **indicateur de minuterie** : la tasse se **remplit de « café »** dont le niveau baisse
+  avec le temps (l'icône reste la simple tasse, alignée comme les autres). L'icône est
+  une image **« template »** (remplissage + contour assemblés en une silhouette) → macOS
+  la recolore (clair/sombre) et l'inverse au clic, comme ses propres icônes ;
+  temps exact dans l'infobulle au survol. `countdownTimer` répétitif (1×/s) +
+  `autoOffEndDate`/`autoOffDuration` ; `tick()` redessine l'icône (`StatusIcon.image`
+  avec `CaffeineLogic.remainingFraction`) et coupe quand le temps est écoulé ;
 - icône d'app « tasse blanche sur carré brun » : PNG dans `AppIcon.appiconset`
   (générés depuis `cup.and.saucer.fill` ; script de génération non versionné) ;
 - lancement au démarrage via `SMAppService.mainApp` ;

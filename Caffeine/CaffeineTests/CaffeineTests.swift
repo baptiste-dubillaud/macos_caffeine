@@ -35,6 +35,28 @@ struct CaffeineLogicTests {
         #expect(CaffeineLogic.timerInterval(minutes: 120) == 7200)
     }
 
+    // Le texte du compte à rebours (m:ss), arrondi à la seconde supérieure,
+    // jamais négatif.
+    @Test("Le compte à rebours s'affiche au format m:ss")
+    func countdown() {
+        #expect(CaffeineLogic.countdownLabel(remaining: 1800) == "30:00")
+        #expect(CaffeineLogic.countdownLabel(remaining: 90)   == "1:30")
+        #expect(CaffeineLogic.countdownLabel(remaining: 5)    == "0:05")
+        #expect(CaffeineLogic.countdownLabel(remaining: 0)    == "0:00")
+        #expect(CaffeineLogic.countdownLabel(remaining: -3)   == "0:00")   // jamais négatif
+    }
+
+    // La fraction restante pour le niveau de café : 1 au début, 0 à la fin, bornée à [0, 1].
+    @Test("La fraction restante reste entre 0 et 1")
+    func fraction() {
+        #expect(CaffeineLogic.remainingFraction(remaining: 1800, total: 1800) == 1.0)   // début
+        #expect(CaffeineLogic.remainingFraction(remaining: 900,  total: 1800) == 0.5)   // moitié
+        #expect(CaffeineLogic.remainingFraction(remaining: 0,    total: 1800) == 0.0)   // fin
+        #expect(CaffeineLogic.remainingFraction(remaining: -5,   total: 1800) == 0.0)   // borné bas
+        #expect(CaffeineLogic.remainingFraction(remaining: 5000, total: 1800) == 1.0)   // borné haut
+        #expect(CaffeineLogic.remainingFraction(remaining: 100,  total: 0)    == 0.0)   // total nul
+    }
+
     // La liste des durées proposées (source unique de vérité du menu).
     @Test("Les durées proposées sont 30, 60 et 120 minutes")
     func durations() {

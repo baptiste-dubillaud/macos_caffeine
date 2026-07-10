@@ -38,6 +38,9 @@ enum L {
     static var stayActiveWhenLocked: String { String(localized: "Stay active when screen locked") }
     static var quit: String { String(localized: "Quit Caffeine") }
 
+    // Infobulle affichée au survol de la tasse quand une minuterie tourne (ex. « 29:30 »).
+    static func timeRemaining(_ value: String) -> String { String(localized: "Time remaining: \(value)") }
+
     // Corps de la notification de fin de minuterie.
     static var timerEndedBody: String { String(localized: "Timer finished — sleep is allowed again.") }
 
