@@ -44,20 +44,31 @@ Ouvrir le projet dans Xcode et appuyer sur **Cmd-R** pour compiler et lancer imm
 
 ```bash
 cd Caffeine
-xcodebuild -scheme Caffeine -configuration Release build
+xcodebuild -scheme Caffeine -configuration Release build -derivedDataPath build
 ```
 
-Le binaire est généré à : `build/Release/Caffeine.app`
+Le binaire est généré à : `build/Build/Products/Release/Caffeine.app`
+
+> Sans `-derivedDataPath`, Xcode écrit le build dans
+> `~/Library/Developer/Xcode/DerivedData/…` au lieu du dossier local — les
+> commandes `cp` ci-dessous ne le trouveraient alors pas. `-derivedDataPath build`
+> garde tout dans le dossier `build/` du projet.
 
 ### Déployer dans `/Applications`
 
 ```bash
-cp -r Caffeine/build/Release/Caffeine.app /Applications/
-# Rafraîchir la base de données du lanceur système
-lsregister -f /Applications/Caffeine.app
+cp -r Caffeine/build/Build/Products/Release/Caffeine.app /Applications/
+# Rafraîchir la base LaunchServices (Spotlight / Finder) pour qu'elle voie la nouvelle copie.
+# `lsregister` n'est pas dans le PATH — il faut l'appeler par son chemin complet :
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/Caffeine.app
 ```
 
 Puis lancer depuis Spotlight (Cmd-Espace, taper « Caffeine ») ou ajouter aux éléments de connexion via Réglages Système > Général > Éléments de connexion.
+
+> **Spotlight ne voit pas l'app après la copie ?** C'est que LaunchServices n'a
+> pas été prévenu de la nouvelle copie dans `/Applications`. La commande
+> `lsregister -f` ci-dessus (avec son chemin complet) corrige ça. Vérifier avec
+> `mdfind "kMDItemCFBundleIdentifier == 'com.bde.Caffeine'"`.
 
 ### Mettre à jour une installation existante
 
@@ -65,10 +76,10 @@ Recompiler et remplacer l'app dans `/Applications` :
 
 ```bash
 cd Caffeine
-xcodebuild -project Caffeine.xcodeproj -scheme Caffeine -configuration Release build -derivedDataPath ../build
+xcodebuild -project Caffeine.xcodeproj -scheme Caffeine -configuration Release build -derivedDataPath build
 rm -rf /Applications/Caffeine.app
 cp -r build/Build/Products/Release/Caffeine.app /Applications/
-lsregister -f /Applications/Caffeine.app
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/Caffeine.app
 ```
 
 ### Gestion du versionning
