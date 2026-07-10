@@ -11,4 +11,3 @@ DerivedData/
 
 # === Swift Package Manager (au cas où on en ajoute un jour) ===
 .swiftpm/
-.build/

@@ -53,13 +53,8 @@ extension AppDelegate {
         content.title = "Caffeine"
         content.body = L.timerEndedBody
 
-        // On JOINT notre logo à la notification : contrairement à l'icône de gauche
-        // (= icône de l'app, gérée par macOS), cette image fait partie du contenu et
-        // s'affiche donc toujours, sans dépendre du cache d'icônes du système.
-        if let url = LogoRenderer.makeFile(),
-           let logo = try? UNNotificationAttachment(identifier: "logo", url: url) {
-            content.attachments = [logo]
-        }
+        // Pas d'image jointe : macOS affiche déjà l'icône de l'app à gauche de la
+        // notification, un logo en pièce jointe serait redondant.
 
         // trigger: nil = la notification est affichée tout de suite.
         let request = UNNotificationRequest(identifier: UUID().uuidString,

@@ -55,7 +55,6 @@ Rien de plus. Volontairement minimaliste.
 - `StatusIcon.swift` — dessine l'icône de la barre, toujours en image **« template »** :
   tasse seule sans minuterie, ou tasse remplie de « café » (niveau qui baisse) pendant
   une minuterie. macOS gère la couleur clair/sombre et l'inversion au clic.
-- `LogoRenderer.swift` — `enum` sans état : dessine le logo de la notification.
 - `Strings.swift` — `enum L` : toutes les chaînes affichées, via `String(localized:)`.
 - `Localizable.xcstrings` — catalogue de traductions (voir « Localisation » plus bas).
 - (`ViewController.swift` + `Main.storyboard` : **supprimés**, n'existaient déjà plus.)
@@ -88,8 +87,7 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 - **Philosophie** : on ne teste que la **logique pure**, volontairement isolée dans
   `CaffeineLogic.swift` (décision de coupure au verrouillage, durées, minutes→secondes).
   L'UI, l'anti-veille et les notifications (effets de bord) ne sont pas testés.
-- Fichiers : `CaffeineTests.swift` (logique + titres de durée) et
-  `LogoRendererTests.swift` (le logo est un vrai PNG 256×256).
+- Fichier : `CaffeineTests.swift` (logique + titres de durée).
 - **Lancer** : dans Xcode **Cmd-U** (ou ▶ dans la marge d'un test). En ligne de commande :
   `xcodebuild test -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -destination 'platform=macOS'`.
 
@@ -103,8 +101,8 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 - [x] **Phase 1** — Afficher l'icône « tasse vide » dans la barre de menus + menu « Quitter ».
 - [x] **Phase 2** — Clic gauche = bascule vide ↔ pleine (sans logique de veille encore).
 - [x] **Phase 3** — Brancher l'anti-veille (`beginActivity`/`endActivity`) sur la bascule.
-- [x] **Phase 4** — Menu enrichi, minuterie (30 min/1 h/2 h) + notification de fin
-      (logo joint), icône d'app générée, lancement au démarrage (`SMAppService`),
+- [x] **Phase 4** — Menu enrichi, minuterie (30 min/1 h/2 h) + notification de fin,
+      icône d'app générée, lancement au démarrage (`SMAppService`),
       installation dans /Applications.
 
 ## Statut actuel
@@ -118,8 +116,8 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
   verrouillé »** (case à cocher, mémorisée dans `UserDefaults` sous la clé
   `keepAliveWhenLocked`) pour l'inverse (garder actif en arrière-plan) ;
 - anti-veille via `beginActivity(.idleDisplaySleepDisabled)` ;
-- minuterie + extinction auto + notification de fin, avec le logo joint
-  via `UNNotificationAttachment` (`LogoRenderer.makeFile()` rend la tasse à la volée) ;
+- minuterie + extinction auto + notification de fin (texte simple : macOS affiche
+  déjà l'icône de l'app à gauche, un logo joint serait redondant — retiré en 1.2) ;
 - **indicateur de minuterie** : la tasse se **remplit de « café »** dont le niveau baisse
   avec le temps (l'icône reste la simple tasse, alignée comme les autres). L'icône est
   une image **« template »** (remplissage + contour assemblés en une silhouette) → macOS
@@ -136,13 +134,16 @@ retiré le storyboard (pour ne pas avoir de fenêtre), `AppDelegate` n'était pl
 
 ### Mettre à jour l'app installée
 Recompiler en Release puis recopier dans /Applications :
-`xcodebuild -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -configuration Release build`
-puis copier le `.app` produit dans /Applications + `lsregister -f`. (Dév courant : Cmd-R dans Xcode.)
+`xcodebuild -project Caffeine/Caffeine.xcodeproj -scheme Caffeine -configuration Release build -derivedDataPath Caffeine/build`
+puis copier le `.app` produit dans /Applications + réenregistrer avec le chemin complet de
+`lsregister` (pas dans le PATH) :
+`/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/Caffeine.app`.
+(Dév courant : Cmd-R dans Xcode.)
 
 ### Connu / cosmétique
-L'icône À GAUCHE des notifications reste vide tant que le cache d'icônes du démon de
-notifs n'est pas rafraîchi (déconnexion/reconnexion). L'icône d'app est valide
-(Spotlight l'affiche) ; le logo À DROITE (image jointe) s'affiche, lui, toujours.
+L'icône des notifications (à gauche, gérée par macOS = icône de l'app) peut rester
+vide tant que le cache d'icônes du démon de notifs n'est pas rafraîchi
+(déconnexion/reconnexion). L'icône d'app est valide (Spotlight l'affiche).
 NB : le projet est sandboxé (`ENABLE_APP_SANDBOX = YES`) — OK pour `beginActivity`
 (Phase 3) ; à surveiller pour le lancement au démarrage (Phase 4).
 
